@@ -3,6 +3,9 @@ import { listProducts } from './list-products';
 import { FakeProductRepo } from '../infra/fake-product-repo';
 import { Product } from '../domain/product';
 
+// The repo type, taken from listProducts itself so no extra import path is needed
+type ProductRepo = Parameters<typeof listProducts>[0]['productRepo'];
+
 describe('listProducts', () => {
   it('should return empty array when no products exist', async () => {
     // Arrange
@@ -46,7 +49,25 @@ describe('listProducts', () => {
   });
 
   describe('error scenarios', () => {
-    // Error scenario tests can be added here
-    it.todo('should handle repository errors gracefully');
+    it('should handle repository errors gracefully', async () => {
+      // Arrange: a mock repo whose list() throws on purpose
+      const errorMessage = 'Database unavailable';
+      const productRepo: ProductRepo = {
+        list: async () => {
+          throw new Error(errorMessage);
+        },
+        // No-op implementations so the object matches the repository interface
+        getById: async () => null,
+        save: async (p: any) => p,
+        delete: async () => {},
+      };
+
+      // Act
+      const result = await listProducts({ productRepo });
+
+      // Assert: the failure becomes a result object instead of exception
+      expect(result.success).toBe(false);
+      expect(result.error).toBe(errorMessage);
+    });
   });
 });
